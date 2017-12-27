@@ -35,12 +35,17 @@ async function main() {
 }
 
 function handleStudentPreRequirements(task) {
-    fetch(`https://codein.withgoogle.com/api/program/2017/taskinstance/?claimed_by=${task.claimed_by_id}&my_tasks=false&page=1&page_size=20`)
-        .then((studentTasks) => {
-            let highlightStudent = false;
 
+    fetch(`https://codein.withgoogle.com/api/program/2017/taskinstance/?claimed_by=${task.claimed_by_id}&my_tasks=false&page=1&page_size=100`)
+        .then((studentTasks) => {
+            name = task.claimed_by.display_name;
+            setStudentTaskCount(name, studentTasks.length);
+            let highlightStudent = true;
             // TODO: Check for Students pre requirements and set highlightStudent = true; if necessary
             for (let studentTask of studentTasks) {
+                if (studentTask['task_definition_id'] == 5974232355831808 && (studentTask['status'] != 'ABANDONED' || studentTask['status'] != 'UNASSIGNED_BY_MENTOR')) {
+                    highlightStudent = false;
+                }
             }
 
             if (highlightStudent) {
@@ -64,8 +69,8 @@ function handleLastUpdateByStudent(task) {
                 tasksToIgnore.push(task);
             } else if (isRunningOutOfTime(task)) {
                 tasksRunningOutOfTime.push(task);
-            } else if (isWaitingForComment(task, taskDetails)
-                || isWaitingForReview(task, taskDetails)) {
+            } else if (isWaitingForComment(task, taskDetails) ||
+                isWaitingForReview(task, taskDetails)) {
                 tasksToHighlight.push(task);
             }
         });
@@ -111,7 +116,10 @@ const getLast10TaskDetails = (function() {
 async function fetch(url, count = ALL) {
     const items = [];
     while (true) {
-        const {results, next} = await $.getJSON(url);
+        const {
+            results,
+            next
+        } = await $.getJSON(url);
         items.push(...results);
         if (next && (count === ALL || items.length < count)) {
             url = next;
@@ -135,12 +143,22 @@ function differenceInHours(from, to = new Date()) {
  */
 setInterval(() => {
     if (isOnInProgressSite()) {
-        tasksToIgnore.forEach((task) => setStyle(task.id, {'opacity': '0.5'}));
-        tasksHandled.forEach((task) => setStyle(task.id, {'color': '#9ccc00'}));
-        tasksToHighlight.forEach((task) => setStyle(task.id, {'color': '#e53935'}));
-        tasksRunningOutOfTime.forEach((task) => setStyle(task.id, {'color': '#2894ed'}));
+        tasksToIgnore.forEach((task) => setStyle(task.id, {
+            'opacity': '0.5'
+        }));
+        tasksHandled.forEach((task) => setStyle(task.id, {
+            'color': '#9ccc00'
+        }));
+        tasksToHighlight.forEach((task) => setStyle(task.id, {
+            'color': '#e53935'
+        }));
+        tasksRunningOutOfTime.forEach((task) => setStyle(task.id, {
+            'color': '#2894ed'
+        }));
 
-        taskStudentToHighlight.forEach((task) => setStudentStyle(task.claimed_by.display_name, {'color': '#e53935'}));
+        taskStudentToHighlight.forEach((task) => setStudentStyle(task.claimed_by.display_name, {
+            'color': '#e53935'
+        }));
     }
 }, 2000);
 
@@ -150,4 +168,9 @@ function setStyle(taskId, css) {
 
 function setStudentStyle(studentName, css) {
     $('td:contains("' + studentName + '")').css(css);
+}
+
+function setStudentTaskCount(studentName, count) {
+    // console.log(studentName, count)
+    $('td:contains("' + studentName + '")').append(` (${count})`);
 }
