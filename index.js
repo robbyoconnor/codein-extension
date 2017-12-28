@@ -2,7 +2,12 @@ const WAITING_FOR_REVIEW_IN_HOURS = 12;
 const RUNNING_OUT_OF_TIME_IN_HOURS = 6;
 
 const CLAIMED = 1;
+const ABANDONED = 2;
+const UNASSIGNED_BY_MENTOR = 3;
 const SUBMITTED = 4;
+const NEEDS_WORK = 5;
+const OUT_OF_TIME = 6;
+const COMPLETED = 7;
 const WAITING_FOR_GOOGLE_REVIEW_OF_PARENTAL_CONSENT = 8;
 
 const ACTION = 1;
@@ -16,6 +21,7 @@ const tasksToIgnore = [];
 const tasksHandled = [];
 const tasksToHighlight = [];
 const tasksRunningOutOfTime = [];
+const taskStudentToHighlight = [];
 
 let waitUntilUserIsOnInProgressTab = setInterval(() => {
     if (isOnInProgressSite()) {
@@ -27,17 +33,40 @@ let waitUntilUserIsOnInProgressTab = setInterval(() => {
 async function main() {
     const taskPromises = [];
     await loadCache(await fetch(`https://codein.withgoogle.com/api/program/2017/taskinstance/?is_active=True&my_tasks=false&order=-last_update_by_student&page=1&page_size=100`));
-    for (let {task} of Object.values(cache)) {
-        if (task.status === WAITING_FOR_GOOGLE_REVIEW_OF_PARENTAL_CONSENT
-            || (task.status === CLAIMED && task.comments_count === 0)) {
+    for (let {
+            task
+        } of Object.values(cache)) {
+        if (task.status === WAITING_FOR_GOOGLE_REVIEW_OF_PARENTAL_CONSENT ||
+            (task.status === CLAIMED && task.comments_count === 0)) {
             tasksToIgnore.push(task);
         } else if (task.last_update_by_student) {
             taskPromises.push(handleLastUpdateByStudent(task));
         } else {
             taskPromises.push(handleLastUpdateByMentor(task));
+
         }
+        handleStudentTaskPreRequisites(task)
     }
     Promise.all(taskPromises).then(saveCache);
+}
+
+async function handleStudentTaskPreRequisites(task) {
+    studentTasks = await fetch(`https://codein.withgoogle.com/api/program/2017/taskinstance/?claimed_by=${task.claimed_by_id}&my_tasks=false&page=1&page_size=100&status=${COMPLETED}`);
+    for (studentTask of studentTasks) {
+        let highlightStudent = true;
+        for (let studentTask of studentTasks) {
+            if (studentTask.task_definition_id === 5974232355831808 && (studentTask.status !== 'ABANDONED' || studentTask.status !== 'UNASSIGNED_BY_MENTOR')) {
+                highlightStudent = false;
+            }
+        }
+
+        if (highlightStudent) {
+            taskStudentToHighlight.push(task);
+        }
+    };
+    name = task.claimed_by.display_name;
+    setStudentTaskCount(name, studentTasks.length);
+
 }
 
 async function handleLastUpdateByMentor(task) {
@@ -93,7 +122,10 @@ async function getLast10TaskDetails(taskId) {
 async function fetch(url, count = ALL) {
     const items = [];
     while (true) {
-        const {results, next} = await $.getJSON(url);
+        const {
+            results,
+            next
+        } = await $.getJSON(url);
         items.push(...results);
         if (next && (count === ALL || items.length < count)) {
             url = next;
@@ -134,21 +166,25 @@ function loadCache(tasks) {
             chrome.storage.local.get(null, (cachedEntries) => {
                 for (let task of tasks) {
                     const cachedTask = (cachedEntries[task.id] || {}).task;
-                    if (cachedTask
-                        && cachedTask.modified === task.modified
-                        && cachedTask.status === task.status
-                        && cachedTask.comments_count === task.comments_count
+                    if (cachedTask &&
+                        cachedTask.modified === task.modified &&
+                        cachedTask.status === task.status &&
+                        cachedTask.comments_count === task.comments_count
                     ) {
                         cache[task.id] = cachedEntries[task.id];
                     } else {
-                        cache[task.id] = {task};
+                        cache[task.id] = {
+                            task
+                        };
                     }
                 }
                 resolve();
             });
         } else {
             for (let task of tasks) {
-                cache[task.id] = {task};
+                cache[task.id] = {
+                    task
+                };
             }
             resolve();
         }
@@ -172,13 +208,32 @@ function saveCache() {
  */
 setInterval(() => {
     if (isOnInProgressSite()) {
-        tasksToIgnore.forEach((task) => setStyle(task.id, {'opacity': '0.5'}));
-        tasksHandled.forEach((task) => setStyle(task.id, {'color': '#9ccc00'}));
-        tasksToHighlight.forEach((task) => setStyle(task.id, {'color': '#e53935'}));
-        tasksRunningOutOfTime.forEach((task) => setStyle(task.id, {'color': '#2894ed'}));
+        tasksToIgnore.forEach((task) => setStyle(task.id, {
+            'opacity': '0.5'
+        }));
+        tasksHandled.forEach((task) => setStyle(task.id, {
+            'color': '#9ccc00'
+        }));
+        tasksToHighlight.forEach((task) => setStyle(task.id, {
+            'color': '#e53935'
+        }));
+        tasksRunningOutOfTime.forEach((task) => setStyle(task.id, {
+            'color': '#2894ed'
+        }));
+        taskStudentToHighlight.forEach((task) => setStudentStyle(task.claimed_by.display_name, {
+            'color': '#e53935'
+        }));
     }
 }, 2000);
 
 function setStyle(taskId, css) {
     $('a[href*="' + taskId + '"]').css(css);
+}
+
+function setStudentStyle(studentName, css) {
+    $('td:contains("' + studentName + '")').css(css);
+}
+
+function setStudentTaskCount(studentName, count) {
+    $('td:contains("' + studentName + '")').append(` (${count})`);
 }
