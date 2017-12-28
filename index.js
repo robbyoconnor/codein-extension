@@ -32,7 +32,7 @@ let waitUntilUserIsOnInProgressTab = setInterval(() => {
 
 async function main() {
     const taskPromises = [];
-    await loadCache(await fetch(`https://codein.withgoogle.com/api/program/2017/taskinstance/?is_active=True&my_tasks=false&order=-last_update_by_student&page=1&page_size=100`));
+    await loadCache(await fetch(`https://codein.withgoogle.com/api/program/2017/task-instance/?is_active=True&my_tasks=false&order=-last_update_by_student&page=1&page_size=100`));
     for (let {
             task
         } of Object.values(cache)) {
@@ -55,7 +55,7 @@ async function handleStudentTaskPreRequisites(task) {
     for (studentTask of studentTasks) {
         let highlightStudent = true;
         for (let studentTask of studentTasks) {
-            if (studentTask.task_definition_id === 5974232355831808 && (studentTask.status !== 'ABANDONED' || studentTask.status !== 'UNASSIGNED_BY_MENTOR')) {
+            if (studentTask.task_definition_id === 5974232355831808) {
                 highlightStudent = false;
             }
         }
@@ -242,5 +242,5 @@ function setStudentTaskCount(studentName, count) {
 function setStudentTaskInstanceLink(studentName, studentId) {
     const url = `https://codein.withgoogle.com/dashboard/task-instances/?sp-order=-modified&sp-organization=5165875202097152&sp-my_tasks=false&sp-claimed_by=${studentId}&sp-page_size=100&sp-status=${COMPLETED}`
     const link = `<a href="${url}">${studentName}</a>`
-  $('td:contains("' + studentName + '")').html(link);
+    $('td:contains("' + studentName + '")').html(link);
 }
