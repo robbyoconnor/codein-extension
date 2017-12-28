@@ -65,6 +65,7 @@ async function handleStudentTaskPreRequisites(task) {
         }
     };
     name = task.claimed_by.display_name;
+    setStudentTaskInstanceLink(name, task.claimed_by_id);
     setStudentTaskCount(name, studentTasks.length);
 
 }
@@ -236,4 +237,10 @@ function setStudentStyle(studentName, css) {
 
 function setStudentTaskCount(studentName, count) {
     $('td:contains("' + studentName + '")').append(` (${count})`);
+}
+
+function setStudentTaskInstanceLink(studentName, studentId) {
+    const url = `https://codein.withgoogle.com/dashboard/task-instances/?sp-order=-modified&sp-organization=5165875202097152&sp-my_tasks=false&sp-claimed_by=${studentId}&sp-page_size=100&sp-status=${COMPLETED}`
+    const link = `<a href="${url}">${studentName}</a>`
+  $('td:contains("' + studentName + '")').html(link);
 }
